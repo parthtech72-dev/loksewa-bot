@@ -1,0 +1,33 @@
+name: Check Loksewa Notices
+
+on:
+  schedule:
+    # Every 30 minutes. GitHub UTC time use garcha (Nepal time bhanda 5:45 pachi)
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    # Yesले manually "Run workflow" button थिच्न दिन्छ testing को लागि
+
+jobs:
+  check-notices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
+      - name: Run scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: python scraper/check_notices.py
