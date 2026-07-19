@@ -82,7 +82,7 @@ The system has two independent parts:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/<your-username>/loksewa-bot.git
+git clone https://github.com/parthtech72-dev/loksewa-bot.git
 cd loksewa-bot
 ```
 
