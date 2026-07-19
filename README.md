@@ -1,212 +1,149 @@
-# Loksewa Vacancy Alert Bot — Step-by-Step Roadmap (Zero to Live)
+# 🔔 Loksewa Alert Bot
 
-Yo file ma sabai step, sabai kaha-ke garne, ra Antigravity lai kun bela k prompt
-dine sabai kura detail maa cheu. Order maa follow garnu.
+A free Telegram bot that automatically notifies subscribers when the **Public Service Commission of Nepal (PSC)** publishes new vacancy notices, exam schedules, or results — so job seekers never have to manually refresh [psc.gov.np](https://psc.gov.np) again.
 
----
-
-## PHASE 0: Account Banaune (15-20 minute)
-
-### 0.1 — GitHub account
-1. github.com maa jane, "Sign up" garne (free, card chaidaina).
-2. Login vaye pachi, "New repository" button click garne.
-3. Repository name: `loksewa-bot`, "Public" select garne, "Create repository" click garne.
-
-### 0.2 — Telegram Bot banaune
-1. Phone/laptop ko Telegram app kholne.
-2. Search bar maa `@BotFather` khojne, tyo official bot ho (blue tick huncha).
-3. `/newbot` type garera pathaune.
-4. Bot ko naam sodhcha (jasto: "Loksewa Alert Nepal") — jun pani rakhna sakincha.
-5. Bot ko username sodhcha — यो unique हुनु पर्छ ra "bot" le end हुनु पर्छ
-   (jasto: `loksewa_alert_np_bot`).
-6. BotFather le tapailai ek **token** dincha, yasto deखिन्छ:
-   `7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
-   **Yo token copy garera sambhalera rakhne** — yo password jasto ho, kasaisanga share nagarne.
-
-### 0.3 — Supabase account (free database)
-1. supabase.com maa jane, "Start your project" click garne, GitHub account le hi login garna milcha.
-2. "New Project" banaune — naam jasto pani rakhna sakincha (jasto: `loksewa-bot-db`).
-3. Database password sodhcha — jasto pani ek strong password type garne, note garera rakhne.
-4. Project banna 1-2 minute laagcha.
-5. Project ready vaye pachi, left sidebar bata **Project Settings → API** maa jane.
-6. Yaha 2 wota kura copy garera rakhne:
-   - **Project URL** (jasto: `https://abcxyz.supabase.co`)
-   - **service_role key** (yo secret key ho, "Project API keys" section maa huncha)
+> ⚠️ **Disclaimer:** This is an independent, unofficial project. It is not affiliated with, endorsed by, or connected to the Public Service Commission of Nepal in any way. Always verify information on the [official PSC website](https://psc.gov.np).
 
 ---
 
-## PHASE 1: psc.gov.np ko Structure (Update: already solved)
+## 📖 Overview
 
-psc.gov.np Vue.js le banaeko site ho (JavaScript le notices load garcha),
-tesaile simple HTML request le kaam gardaina. Real HTML inspect gareko
-adhaar maa, `check_notices.py` maile **Playwright** (headless browser)
-use garera already update garisakeko chu — timile manually selector
-patta lagaunu pardaina, code ready cha.
+Every year, hundreds of thousands of Nepali job seekers manually check the PSC website for new vacancy notices, exam center announcements, and results. There's no reliable, free notification system for this — so this bot fills that gap.
 
-Yesले गर्ने काम: Playwright ले page लाई real browser जस्तै खोल्छ, JavaScript
-चल्न दिन्छ, notices load भइसकेपछि HTML बाट title ra link निकाल्छ। Kunai
-API token/cookie चाहिँदैन — यो सबैभन्दा भरपर्दो तरिका हो JS-heavy site हरूको लागि।
+Users subscribe once via Telegram and automatically receive a message the moment a new notice is published, along with a direct link to the official source.
 
-Yedi bhavishya maa website ko design change bhayo ra scraper le kaam
-garna chodyo bhane, Antigravity lai yasto prompt dine:
+---
+
+## ✨ Features
+
+- **Automatic monitoring** — checks psc.gov.np every 30 minutes, no manual action needed
+- **Instant Telegram alerts** — new notices are pushed directly to subscribers' chats
+- **Zero missed notices** — every new notice is sent to every subscriber (no unreliable keyword filtering)
+- **Self-monitoring** — the bot tracks its own health and alerts the maintainer if the target website's structure changes or an error occurs
+- **Simple commands** — `/start` to subscribe, `/stop` to unsubscribe, `/status` to check bot health
+- **100% free to run** — built entirely on free-tier infrastructure
+
+---
+
+## 🏗️ How It Works
 
 ```
-psc.gov.np ko notice page ko HTML structure change bhayo jasto lagcha,
-scraper le notices bhetauna chodyo. Tala real HTML paste garchu,
-scraper/check_notices.py ko fetch_notices() function ma rakheko
-selectors (ul.update-section, p.line-clamp-2, a.screenLink) lai
-naya HTML anusar update garidinus.
-
-[NAYA HTML PASTE GARNE]
+┌─────────────────┐     every 30 min      ┌──────────────────┐
+│  GitHub Actions  │ ─────────────────────▶│   psc.gov.np      │
+│  (scheduled job) │                        │  (via Playwright) │
+└────────┬─────────┘                        └───────────────────┘
+         │
+         │ new notice detected
+         ▼
+┌──────────────────┐        stores        ┌──────────────────┐
+│  Supabase (DB)    │ ◀───────────────────▶│  Telegram Bot API │
+│  - subscribers     │                       │  (sends alerts)   │
+│  - seen_notices     │                       └──────────────────┘
+│  - bot_status        │
+└──────────────────┘
+         ▲
+         │ subscribe / unsubscribe
+         │
+┌──────────────────┐
+│  Flask Webhook     │◀── /start /stop /status commands
+│  (PythonAnywhere)   │
+└──────────────────┘
 ```
+
+The system has two independent parts:
+
+1. **Scraper** (`check_notices.py`) — runs on a schedule via GitHub Actions. Uses [Playwright](https://playwright.dev) to render the JavaScript-based PSC website, extracts notices, compares them against previously seen notices in the database, and broadcasts new ones to all subscribers.
+2. **Webhook** (`webhook_app.py`) — a lightweight Flask app hosted on PythonAnywhere that handles user commands (`/start`, `/stop`, `/status`) in real time via Telegram's webhook system.
 
 ---
 
-## PHASE 2: Code lai GitHub maa Upload Garne
+## 🛠️ Tech Stack
 
-Yo project ko sabai file (jun maile tapailai diyeko chu) tapaiko computer maa
-download garera GitHub maa halnu parcha. Duita tarika cha:
+| Component | Technology |
+|---|---|
+| Scraping | Python, Playwright |
+| Bot backend | Python, Flask |
+| Database | Supabase (PostgreSQL) |
+| Scheduling | GitHub Actions (cron) |
+| Messaging | Telegram Bot API |
+| Hosting | PythonAnywhere (free tier) |
 
-### Tarika A (sajilo — GitHub website bata direct):
-1. GitHub repo (`loksewa-bot`) kholne.
-2. "Add file" → "Upload files" click garne.
-3. Sabai file/folder (scraper/, .github/, webhook_app.py, requirements.txt) drag-drop garne.
-4. "Commit changes" click garne.
+---
 
-### Tarika B (terminal bata, professional tarika):
+## 🚀 Getting Started
+
+<details>
+<summary>Click to expand setup instructions</summary>
+
+### Prerequisites
+- A [Telegram Bot Token](https://core.telegram.org/bots#botfather) from BotFather
+- A free [Supabase](https://supabase.com) project
+- A free [PythonAnywhere](https://www.pythonanywhere.com) account
+
+### 1. Clone the repository
 ```bash
-git clone https://github.com/TIMRO-USERNAME/loksewa-bot.git
+git clone https://github.com/<your-username>/loksewa-bot.git
 cd loksewa-bot
-# yaha maile diyeko sabai file yo folder maa copy garne
-git add .
-git commit -m "Initial setup"
-git push
 ```
+
+### 2. Set up the database
+Run the SQL in `migration_add_status_table.sql` (and the initial schema) in your Supabase SQL Editor to create the required tables: `subscribers`, `seen_notices`, `bot_status`.
+
+### 3. Configure environment variables
+The following secrets are required:
+
+| Variable | Description |
+|---|---|
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_KEY` | Your Supabase `service_role` key |
+| `TELEGRAM_BOT_TOKEN` | Your bot's token from BotFather |
+| `ADMIN_CHAT_ID` | Your personal Telegram chat ID (for admin alerts) |
+
+- For the scraper: add these as **GitHub repository secrets** (Settings → Secrets and variables → Actions)
+- For the webhook: set these as environment variables in your PythonAnywhere WSGI config
+
+### 4. Deploy
+- **Scraper**: Runs automatically via the included GitHub Actions workflow (`.github/workflows/scraper.yml`)
+- **Webhook**: Deploy `webhook_app.py` as a Flask app on PythonAnywhere, then register the webhook:
+  ```
+  https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-username>.pythonanywhere.com/webhook
+  ```
+
+</details>
 
 ---
 
-## PHASE 3: Supabase maa Database Tables Banaune
+## 🤖 Bot Commands
 
-1. Supabase project kholne, left sidebar bata **SQL Editor** maa jane.
-2. "New query" click garera tala ko SQL paste garne, "Run" click garne:
-
-```sql
-create table subscribers (
-  id bigint generated by default as identity primary key,
-  chat_id bigint unique not null,
-  category text not null,
-  created_at timestamp default now()
-);
-
-create table seen_notices (
-  id bigint generated by default as identity primary key,
-  notice_id text unique not null,
-  title text,
-  link text,
-  created_at timestamp default now()
-);
-```
-
-3. "Run" click gare pachi "Success" dekhincha bhane table banisakyo.
+| Command | Description |
+|---|---|
+| `/start` | Subscribe to notice alerts |
+| `/stop` | Unsubscribe from alerts |
+| `/status` | Check when the bot last checked for notices |
 
 ---
 
-## PHASE 4: Webhook App Deploy Garne (PythonAnywhere — free, card chaidaina)
+## 🗺️ Roadmap
 
-1. pythonanywhere.com maa "Create a Beginner account" garne (free, card chaidaina).
-2. Dashboard bata "Files" tab maa jane, `webhook_app.py` ra `requirements.txt`
-   upload garne (ya "Consoles" tab bata Bash console kholera `git clone` garna sakincha).
-3. "Consoles" tab bata Bash console kholera:
-   ```bash
-   pip install --user flask requests
-   ```
-4. "Web" tab maa jane, "Add a new web app" click garne, "Flask" select garne,
-   Python version 3.10 select garne.
-5. WSGI configuration file kholera `webhook_app` ko `app` object point garne
-   (PythonAnywhere le auto-template dincha, tyo ma import line matra change garne).
-6. "Web" tab maa "Environment variables" section maa yi 3 wota rakhne:
-   - `TELEGRAM_BOT_TOKEN` = (Phase 0.2 ko token)
-   - `SUPABASE_URL` = (Phase 0.3 ko URL)
-   - `SUPABASE_KEY` = (Phase 0.3 ko service_role key)
-7. "Reload" button click garne — yesले app live garcha.
-8. Timro webhook URL yasto huncha: `https://TIMRO-USERNAME.pythonanywhere.com/webhook`
-
-### Yo bela Antigravity lai yasto prompt dine (yedi WSGI setup ma error aaye):
-```
-PythonAnywhere maa Flask app deploy garda yo error aayo: [ERROR PASTE GARNE]
-Mero app ko file webhook_app.py ho, Flask object ko naam "app" ho.
-WSGI config file kasari sahi garne bhanera step-by-step bhanidinus.
-```
+- [ ] Support additional government job portals (Nepal Bank Jobs, Nepal Army/Police)
+- [ ] WhatsApp support
+- [ ] Smarter category-based filtering
+- [ ] Public uptime dashboard
 
 ---
 
-## PHASE 5: Telegram lai Webhook URL Bhanne
+## 🤝 Contributing
 
-Bot lai bhanaupardaigi "user le message pathauda mero webhook maa pathau" —
-yo ek choti matra garne kaam ho. Browser maa yo URL kholne (values afno le replace garera):
-
-```
-https://api.telegram.org/bot<TIMRO_BOT_TOKEN>/setWebhook?url=https://TIMRO-USERNAME.pythonanywhere.com/webhook
-```
-
-`{"ok":true,"result":true,...}` dekhincha bhane successful vayo.
+Issues and pull requests are welcome. If you find a bug (e.g. the scraper breaking due to a website redesign), please open an issue with details.
 
 ---
 
-## PHASE 6: GitHub Secrets Rakhne (scraper ko lagi)
+## 📄 License
 
-1. GitHub repo maa "Settings" tab → left sidebar "Secrets and variables" → "Actions".
-2. "New repository secret" click garera 3 choti yi add garne:
-   - Name: `SUPABASE_URL`, Value: (timro Supabase URL)
-   - Name: `SUPABASE_KEY`, Value: (timro service_role key)
-   - Name: `TELEGRAM_BOT_TOKEN`, Value: (timro bot token)
-
-Yesले scraper.yml workflow le yi secrets access garna paucha, tara code maa
-kahi pani plain text ma dekhindaina (security ko lagi important).
+This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-## PHASE 7: Testing
+## 🙏 Acknowledgements
 
-1. Telegram maa aafnै bot khojera `/start` pathaune → category buttons dekhinu parcha.
-2. Ek category click garne → "ठिक छ!" confirmation message aaunu parcha.
-3. Supabase "Table Editor" maa `subscribers` table kholera check garne —
-   timro chat_id ra category tyaha save vayeko dekhinu parcha.
-4. GitHub repo maa "Actions" tab maa jane, "Check Loksewa Notices" workflow
-   select garne, "Run workflow" button le manually ek choti chalaune (testing ko lagi,
-   30 minute pardhirahanu pardaina).
-5. Logs herera error cha ki chaina check garne.
-
-### Yo bela error aaye Antigravity lai yasto prompt dine:
-```
-GitHub Actions maa yo scraper script chalauda yo error aayo:
-[ERROR LOG PASTE GARNE]
-
-File: scraper/check_notices.py
-Yo error kina aayo ra kasari fix garne bhanidinus.
-```
-
----
-
-## PHASE 8: Launch
-
-1. Sabai kaam chalyo bhaye pachi, bot ko username (jasto `t.me/loksewa_alert_np_bot`)
-   Facebook ka "Lok Sewa Aayog," "Government job Nepal" groups maa share garne.
-2. Bot ma clearly euta message rakhne: "⚠️ Unofficial bot ho, sabai jankari
-   psc.gov.np maa gayera verify garnus."
-3. Result/vacancy season aauda screenshot/short video Reels maa share garne.
-
----
-
-## Cost Summary
-
-| Kura | Tool | Paisa |
-|---|---|---|
-| Code storage | GitHub | Free |
-| Auto-scraping (every 30 min) | GitHub Actions | Free |
-| Database | Supabase | Free |
-| Bot webhook hosting | PythonAnywhere | Free |
-| Messaging | Telegram Bot API | Free |
-| Coding help | Google Antigravity Pro | Timisanga cha |
-
-**Card kunai pani step maa chaidaina.**
+Built to help Nepali job seekers stay informed without the daily hassle of manually checking government websites.
